@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <stdexcept>
 #define WEIGHTLESS 0
 
 // gph stands for graph, this namespace is used mainly for
@@ -33,6 +34,7 @@ namespace gph
         friend class Graph<T>;
 
     public:
+        Edge(){}
         Edge(const int& weight);
         ~Edge();
     };
@@ -47,13 +49,14 @@ namespace gph
     private:
         Vertex<T>* nextVtx;
         Edge<T>* adjEdge;
-        std::string *id;
-        T* value;
 
         friend class Graph<T>;
         friend class Edge<T>;
-        
+
     public:
+        T* value;
+        std::string *id;
+        Vertex(){}
         Vertex(const std::string& id, const T& value);
         ~Vertex();
     };
@@ -76,16 +79,17 @@ namespace gph
         friend class Vertex<T>;
         friend class Edge<T>;
 
+        Vertex<T>* operator[](const int& index);
+        Vertex<T>* getVertex(const std::string& id);
+
     public:
+        Graph(){}
         Graph(const std::string& id, bool directed = false, bool weighted = WEIGHTLESS);
         ~Graph();
 
         const int& getVertices() const;
         const int& getEdges() const;
         const std::string& getId() const;
-
-        Vertex<T>*& operator[](const int& index);
-        Vertex<T>*& getVertex(const std::string& id);
 
         void add_vertex(const std::string &id, const T &value);
         void add_edge(const Vertex<T>*& org, const Vertex<T>*& dst, const int& weight);
@@ -177,7 +181,7 @@ namespace gph
     template <typename T>
     const std::string& Graph<T>::getId() const
     { return this->id; }
-    
+
     template <typename T>
     bool Graph<T>::is_empty()
     { return !this->vertices; }
@@ -187,8 +191,15 @@ namespace gph
     void Graph<T>::add_vertex(const std::string &id, const T &value)
     {
         Vertex<T>* auxVtx = this->root;
+        std::string msg;
         if (is_empty())
             this->root = new Vertex<T>(id, value);
+        else if (vertex_exists(id)) {
+            msg = "The given id \"";
+            msg += id;
+            msg += "\" is already in use";
+            throw std::range_error(msg);
+        }
         else {
             for (; auxVtx->nextVtx != nullptr; auxVtx = auxVtx->nextVtx);
             auxVtx->nextVtx = new Vertex<T>(id, value);
@@ -212,11 +223,41 @@ namespace gph
         Vertex<T>* auxVtx = this->root;
         if (is_empty())
             return false;
-        if (*auxVtx->id == id)
-            return true;
-        for (; auxVtx->nextVtx != nullptr; auxVtx = auxVtx->nextVtx)
+        for (; auxVtx != nullptr; auxVtx = auxVtx->nextVtx)
             if (*auxVtx->id == id)
                 return true;
         return false;
+    }
+
+    /// Returns a Vertex using an index (0 <= index < vertices) for the vtx list.
+    /// If no vertex is found then the function an error will pop up.
+    template<typename T>
+    Vertex<T> *Graph<T>::operator[](const int &index)
+    {
+        Vertex<T>* auxVtx = this->root;
+        if (index >= this->vertices)
+            throw std::range_error("Index is greater or equal than the number of vertices stored");
+        if (index < 0)
+            throw std::range_error("Index is smaller than zero");
+        for (int crrtPos = 0; crrtPos < index; crrtPos++)
+            auxVtx = auxVtx->nextVtx;
+        return auxVtx;
+    }
+
+    /// Returns a vertex using an id so the method can iterate over every vtx in the list until a matching
+    /// id is found. If no matching id is found then the method will return a nullptr.
+    template<typename T>
+    Vertex<T> *Graph<T>::getVertex(const std::string &id)
+    {
+        Vertex<T>* auxVtx = this->root;
+        Vertex<T>* result = nullptr;
+        if (is_empty())
+            throw std::range_error("This graph has no vertices");
+        if (!vertex_exists(id))
+            throw std::range_error("The given id doesn't correspond to any vertex stored in the graph");
+        for (; auxVtx != nullptr; auxVtx = auxVtx->nextVtx)
+            if (*auxVtx->id == id)
+                result = auxVtx;
+        return result;
     }
 }
